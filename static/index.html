@@ -1,0 +1,276 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Competitor Watch</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:wght@400;500;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --fog:#e8ecef; --paper:#ffffff; --ink:#111a21; --muted:#5a6773; --line:#cdd5db;
+    --rail:#0e2a2f; --rail-ink:#d6e6e4; --rail-dim:#7fa3a0;
+    --signal:#3b3bf2; --signal-bg:#e9e9fe; --amber:#a35a00; --amber-bg:#fff1d9;
+    --ok:#17794a; --bad:#b3261e; --bad-bg:#fde8e6;
+  }
+  @media (prefers-color-scheme:dark){
+    :root{ --fog:#0d1317; --paper:#151d23; --ink:#e6edf1; --muted:#93a1ac; --line:#273540;
+      --rail:#081a1d; --signal:#8c8cff; --signal-bg:#22224d; --amber:#f0b45a; --amber-bg:#3a2a10;
+      --ok:#4fd08c; --bad:#ff8a80; --bad-bg:#3b1815; }
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%}
+  body{font:15px/1.5 "Schibsted Grotesk",system-ui,-apple-system,Segoe UI,sans-serif;background:var(--fog);color:var(--ink);display:grid;grid-template-columns:260px 1fr}
+  a{color:var(--signal)}
+  button,input{font:inherit}
+  :focus-visible{outline:2px solid var(--signal);outline-offset:2px}
+
+  aside{background:var(--rail);color:var(--rail-ink);padding:24px 18px;min-height:100vh;position:sticky;top:0;align-self:start;height:100vh;overflow:auto}
+  aside h1{font-size:19px;font-weight:800;letter-spacing:-.02em;margin:0 0 4px}
+  aside p{margin:0 0 22px;color:var(--rail-dim);font-size:13px}
+  .watch{display:block;width:100%;text-align:left;background:none;border:0;border-left:3px solid transparent;color:inherit;padding:9px 10px;cursor:pointer;border-radius:0 6px 6px 0}
+  .watch:hover{background:rgba(255,255,255,.06)}
+  .watch[aria-current=true]{border-left-color:#7df0c8;background:rgba(255,255,255,.08)}
+  .watch b{display:block;font-weight:700;word-break:break-all}
+  .watch small{color:var(--rail-dim)}
+  .empty-rail{color:var(--rail-dim);font-size:13px}
+
+  main{padding:34px clamp(18px,4vw,56px) 80px;max-width:1080px;width:100%}
+  h2{font-size:clamp(26px,3.4vw,38px);line-height:1.1;letter-spacing:-.03em;font-weight:800;margin:0 0 6px;max-width:20ch}
+  .lede{color:var(--muted);margin:0 0 22px;max-width:60ch}
+
+  form{display:grid;gap:10px}
+  .row{display:flex;gap:10px;flex-wrap:wrap}
+  input[type=text],input[type=email],input[type=url]{flex:1;min-width:220px;padding:13px 14px;border:1px solid var(--line);background:var(--paper);color:var(--ink);border-radius:8px}
+  .go{background:var(--ink);color:var(--paper);border:0;border-radius:8px;padding:13px 22px;font-weight:700;cursor:pointer}
+  .go:disabled{opacity:.55;cursor:progress}
+  details{color:var(--muted);font-size:14px}
+  details summary{cursor:pointer;width:max-content}
+  details .row{margin-top:10px}
+
+  .status{margin:22px 0 0;padding:12px 14px;border-left:4px solid var(--signal);background:var(--signal-bg);border-radius:0 8px 8px 0}
+  .status.err{border-color:var(--bad);background:var(--bad-bg)}
+  .status.warn{border-color:var(--amber);background:var(--amber-bg)}
+  .status strong{display:block}
+  .spin{display:inline-block;width:11px;height:11px;border:2px solid currentColor;border-right-color:transparent;border-radius:50%;animation:s .8s linear infinite;margin-right:8px;vertical-align:-1px}
+  @keyframes s{to{transform:rotate(360deg)}}
+  @media (prefers-reduced-motion:reduce){.spin{animation:none}}
+
+  section{margin-top:34px}
+  section h3{font-size:18px;letter-spacing:-.01em;margin:0 0 10px;display:flex;gap:10px;align-items:baseline}
+  section h3 span{font-weight:400;color:var(--muted);font-size:14px}
+  .tbl{overflow-x:auto;border:1px solid var(--line);border-radius:8px;background:var(--paper)}
+  table{width:100%;border-collapse:collapse;min-width:640px}
+  th,td{text-align:left;padding:10px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+  th{font-weight:500;color:var(--muted);font-size:13px;background:transparent}
+  tr:last-child td{border-bottom:0}
+  td.num,th.num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+  .t a{font-weight:700;text-decoration:none}
+  .t a:hover{text-decoration:underline}
+  .t small{display:block;color:var(--muted);margin-top:2px;max-width:56ch}
+  .pill{display:inline-block;font-size:12px;font-weight:700;padding:1px 8px;border-radius:99px;background:var(--signal-bg);color:var(--signal);margin-left:6px;vertical-align:1px}
+  .muted{color:var(--muted)}
+  .kw{font-style:italic}
+  .na{color:var(--muted)}
+  .box{border:1px solid var(--line);background:var(--paper);border-radius:8px;padding:12px 14px}
+  .box+.box{margin-top:8px}
+  .chg{color:var(--amber);font-weight:700}
+  ul.plain{margin:0;padding-left:18px}
+  .ok{color:var(--ok);font-weight:700}.bad{color:var(--bad);font-weight:700}
+  pre{white-space:pre-wrap;background:var(--paper);border:1px solid var(--line);border-radius:8px;padding:12px;font:13px/1.5 ui-monospace,Menlo,monospace;margin:8px 0 0}
+  .link{background:none;border:0;color:var(--muted);cursor:pointer;text-decoration:underline;padding:0}
+
+  @media (max-width:820px){
+    body{grid-template-columns:1fr}
+    aside{position:static;height:auto;min-height:0}
+  }
+</style>
+</head>
+<body>
+<aside>
+  <h1>Competitor Watch</h1>
+  <p>Domains you're tracking</p>
+  <div id="rail"><div class="empty-rail">Nothing yet. Check a domain to start tracking it.</div></div>
+</aside>
+
+<main>
+  <h2>See what your competitors publish before your next meeting</h2>
+  <p class="lede">Enter a domain. Competitor Watch crawls its blog, remembers every post, and tells you only what's new, with target keywords, search volume, and pricing changes.</p>
+
+  <form id="f">
+    <div class="row">
+      <input id="domain" type="text" inputmode="url" autocomplete="off" spellcheck="false" placeholder="competitor.com" aria-label="Competitor domain" required>
+      <button class="go" id="go" type="submit">Check now</button>
+    </div>
+    <details>
+      <summary>Send alerts to my Slack or email</summary>
+      <div class="row">
+        <input id="slack" type="url" placeholder="Slack webhook URL (https://hooks.slack.com/services/...)" aria-label="Slack webhook URL">
+        <input id="email" type="email" placeholder="you@company.com" aria-label="Alert email">
+      </div>
+    </details>
+  </form>
+
+  <div id="status" hidden></div>
+  <div id="result"></div>
+  <div id="tracked"></div>
+  <div id="history"></div>
+</main>
+
+<script>
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const nf = n => (typeof n === "number" ? n.toLocaleString() : null);
+let current = null, poll = null;
+
+async function api(path, opts) {
+  const r = await fetch(path, opts);
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(j.error || `Request failed (${r.status})`);
+  return j;
+}
+
+function ago(iso) {
+  if (!iso) return "never checked";
+  const m = Math.round((Date.now() - new Date(iso)) / 60000);
+  if (m < 1) return "just now";
+  if (m < 60) return `${m} min ago`;
+  if (m < 1440) return `${Math.round(m / 60)} h ago`;
+  return `${Math.round(m / 1440)} d ago`;
+}
+
+async function loadRail() {
+  const ds = await api("/api/domains");
+  $("#rail").innerHTML = ds.length ? ds.map(d => `
+    <button class="watch" data-id="${d.id}" data-domain="${esc(d.domain)}" aria-current="${current === d.id}">
+      <b>${esc(d.domain)}</b><small>${d.posts} posts, ${ago(d.last_checked_at)}</small>
+    </button>`).join("") : '<div class="empty-rail">Nothing yet. Check a domain to start tracking it.</div>';
+  document.querySelectorAll(".watch").forEach(b => b.onclick = () => openDomain(+b.dataset.id, b.dataset.domain));
+}
+
+async function openDomain(id, domain) {
+  current = id; $("#domain").value = domain;
+  await Promise.all([loadRail(), showTracked(id), showHistory(id)]);
+  const runs = await api(`/api/domains/${id}/runs`);
+  if (runs[0] && runs[0].result) renderResult(runs[0]);
+}
+
+$("#f").addEventListener("submit", async e => {
+  e.preventDefault();
+  const body = {domain: $("#domain").value, slack_webhook: $("#slack").value, email: $("#email").value};
+  setBusy(true); $("#result").innerHTML = ""; setStatus("Starting…", "");
+  try {
+    const {run_id} = await api("/api/check", {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify(body)});
+    watchRun(run_id);
+  } catch (err) { setStatus(esc(err.message), "err"); setBusy(false); }
+});
+
+function setBusy(b) { $("#go").disabled = b; $("#go").textContent = b ? "Checking…" : "Check now"; }
+function setStatus(html, cls, spin) {
+  const el = $("#status"); el.hidden = !html; el.className = "status " + (cls || "");
+  el.innerHTML = (spin ? '<span class="spin"></span>' : "") + html;
+}
+
+function watchRun(id) {
+  clearInterval(poll);
+  const tick = async () => {
+    try {
+      const r = await api(`/api/runs/${id}`);
+      if (r.status === "running") { setStatus(esc(r.progress || "Working…"), "", true); return; }
+      clearInterval(poll); setBusy(false); $("#status").hidden = true;
+      renderResult(r);
+      const ds = await api("/api/domains");
+      const d = ds.find(x => x.domain === r.domain);
+      if (d) { current = d.id; await Promise.all([loadRail(), showTracked(d.id), showHistory(d.id)]); }
+    } catch (err) { clearInterval(poll); setBusy(false); setStatus(esc(err.message), "err"); }
+  };
+  tick(); poll = setInterval(tick, 1200);
+}
+
+function kwCell(p) {
+  if (!p.keyword) return '<span class="na">n/a</span>';
+  return `<span class="kw">${esc(p.keyword)}</span>`;
+}
+function volCell(p) {
+  if (nf(p.volume) !== null) return nf(p.volume);
+  const st = p.enrich_status || "";
+  const why = st === "not_configured" ? "no API" : st === "no_data" ? "no data" : st.startsWith("error") ? "API error" : "n/a";
+  return `<span class="na">${why}</span>`;
+}
+function postRows(list, markNew) {
+  return list.map(p => `<tr>
+    <td class="t"><a href="${esc(p.url)}" target="_blank" rel="noopener">${esc(p.title || p.url)}</a>${markNew ? '<span class="pill">new</span>' : ""}
+      ${p.description ? `<small>${esc(p.description)}</small>` : ""}</td>
+    <td>${esc(p.published || "unknown")}</td>
+    <td>${kwCell(p)}</td>
+    <td class="num">${volCell(p)}</td>
+    <td class="num">${typeof p.cpc === "number" ? "$" + p.cpc.toFixed(2) : '<span class="na">n/a</span>'}</td>
+  </tr>`).join("");
+}
+const head = '<thead><tr><th>Post</th><th>Published</th><th>Target keyword</th><th class="num">Searches/mo</th><th class="num">CPC</th></tr></thead>';
+
+function renderResult(run) {
+  const r = run.result || {}, el = $("#result");
+  let h = "";
+  if (run.status === "blocked" || run.status === "unreachable" || run.status === "error" || run.status === "no_blog") {
+    const cls = run.status === "no_blog" ? "warn" : "err";
+    const title = {blocked: "The site is blocking us", unreachable: "Couldn't reach the site", error: "Something went wrong", no_blog: "No blog found"}[run.status];
+    h += `<div class="status ${cls}"><strong>${title}</strong>${esc(r.error || "")}${r.hint ? `<br><span class="muted">${esc(r.hint)}</span>` : ""}</div>`;
+  } else {
+    const s = r.stats || {};
+    const headline = s.first_run ? `Now tracking ${esc(run.domain)}: ${s.total_tracked} posts indexed`
+      : s.new ? `${s.new} new post${s.new > 1 ? "s" : ""} on ${esc(run.domain)}` : `Nothing new on ${esc(run.domain)}`;
+    h += `<section><h3>${headline}<span>${s.total_tracked} posts tracked in total</span></h3>`;
+    if (r.new_posts && r.new_posts.length) {
+      h += `<div class="tbl"><table>${head}<tbody>${postRows(r.new_posts, !s.first_run)}</tbody></table></div>`;
+    } else h += `<div class="box muted">No posts since the last check. This is what the second run on a domain should look like.</div>`;
+    h += "</section>";
+  }
+  if (r.enrichment && !r.enrichment.ok) {
+    h += `<div class="status warn" style="margin-top:14px"><strong>Keyword data unavailable</strong>${esc(r.enrichment.error)}. Posts are still tracked.</div>`;
+  }
+  const pr = r.pricing;
+  if (pr) {
+    let body = "";
+    if (pr.status === "changed") {
+      body = `<span class="chg">Pricing changed.</span> ${pr.removed_prices.length ? "Removed: " + pr.removed_prices.map(esc).join(", ") + ". " : ""}${pr.added_prices.length ? "Added: " + pr.added_prices.map(esc).join(", ") + "." : ""} <a href="${esc(pr.url)}" target="_blank" rel="noopener">Open pricing page</a>`;
+    } else if (pr.status === "baseline") body = esc(pr.note) + ` <a href="${esc(pr.url)}" target="_blank" rel="noopener">Pricing page</a>`;
+    else if (pr.status === "unchanged") body = `No pricing changes. ${pr.prices.length} price points unchanged.`;
+    else body = esc(pr.note || "Pricing page not checked.");
+    h += `<section><h3>Pricing</h3><div class="box">${body}</div></section>`;
+  }
+  if (r.alert && r.alert.length) {
+    h += `<section><h3>Alert</h3>` + r.alert.map(a => `<div class="box"><span class="${a.ok ? "ok" : "bad"}">${esc(a.channel)}</span>: ${esc(a.detail)}</div>`).join("");
+    if (r.alert_text) h += `<details style="margin-top:8px"><summary>Preview the message</summary><pre>${esc(r.alert_text)}</pre></details>`;
+    h += "</section>";
+  }
+  if (r.notes && r.notes.length) h += `<section><h3>How it found the posts</h3><div class="box"><ul class="plain">${r.notes.map(n => `<li>${esc(n)}</li>`).join("")}</ul></div></section>`;
+  el.innerHTML = h;
+}
+
+async function showTracked(id) {
+  const ps = await api(`/api/domains/${id}/posts`);
+  $("#tracked").innerHTML = ps.length ? `<section><h3>Every tracked post<span>${ps.length}</span></h3>
+    <div class="tbl"><table>${head}<tbody>${postRows(ps.slice(0, 150), false)}</tbody></table></div>
+    ${ps.length > 150 ? `<p class="muted">Showing the 150 most recent.</p>` : ""}</section>` : "";
+}
+
+async function showHistory(id) {
+  const rs = await api(`/api/domains/${id}/runs`);
+  $("#history").innerHTML = rs.length ? `<section><h3>Check history <button class="link" id="del">Stop tracking this domain</button></h3>
+    <div class="tbl"><table style="min-width:420px"><thead><tr><th>When</th><th>Result</th><th class="num">New posts</th></tr></thead><tbody>
+    ${rs.map(r => `<tr><td>${esc((r.started_at || "").replace("T", " ").slice(0, 16))} UTC</td><td>${esc(r.status)}</td><td class="num">${r.result && r.result.stats ? r.result.stats.new ?? 0 : 0}</td></tr>`).join("")}
+    </tbody></table></div></section>` : "";
+  const del = $("#del");
+  if (del) del.onclick = async () => {
+    if (!confirm("Delete this domain and all its stored posts?")) return;
+    await api(`/api/domains/${id}`, {method: "DELETE"});
+    current = null; $("#result").innerHTML = $("#tracked").innerHTML = $("#history").innerHTML = ""; loadRail();
+  };
+}
+
+loadRail();
+</script>
+</body>
+</html>
